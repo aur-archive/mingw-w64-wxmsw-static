@@ -1,0 +1,54 @@
+# Maintainer: Никола Вукосављевић <hauzer@gmx.com>
+
+pkgname=mingw-w64-wxmsw-static
+_pkgver_nomicro=3.0
+_pkgver_norc=${_pkgver_nomicro}.1
+_pkgrc=
+_pkgver=${_pkgver_norc}${_pkgrc}
+pkgver=${_pkgver_norc}${_pkgrc}
+pkgrel=1
+pkgdesc='MSW implementation of wxWidgets API for GUI (mingw-w64, static)'
+arch=('any')
+url='http://wxwidgets.org'
+license=('custom:wxWindows')
+makedepends=('mingw-w64-gcc')
+depends=('mingw-w64-crt' 'mingw-w64-libjpeg-turbo' 'mingw-w64-libpng' 'mingw-w64-expat' 'mingw-w64-libtiff')
+options=(!strip !buildflags staticlibs)
+conflicts=('mingw-w64-wxmsw2.9' 'mingw-w64-wxmsw')
+provides=('mingw-w64-wxmsw2.9' 'mingw-w64-wxmsw')
+source=("http://downloads.sourceforge.net/wxwindows/wxWidgets-${_pkgver}.tar.bz2")
+md5sums=('dad1f1cd9d4c370cbc22700dc492da31')
+
+_archs='i686-w64-mingw32 x86_64-w64-mingw32'
+
+build() {
+  for _arch in ${_archs} ; do
+    unset LDFLAGS
+    mkdir -p "${srcdir}/${pkgname}-${_pkgver}-build-${_arch}"
+    cd "${srcdir}/${pkgname}-${_pkgver}-build-${_arch}"
+    "${srcdir}/wxWidgets-${_pkgver}/configure" \
+      --prefix=/usr/${_arch} \
+      --build=$CHOST \
+      --host=${_arch} \
+      --with-msw \
+      --disable-mslu \
+      --enable-static \
+      --disable-shared \
+      --enable-iniconf \
+      --enable-std_string_conv_in_wxstring
+    make -j1
+  done
+}
+
+package() {
+  for _arch in ${_archs} ; do
+    cd "${srcdir}/${pkgname}-${_pkgver}-build-${_arch}"
+    make DESTDIR="$pkgdir" install
+    find "$pkgdir/usr/${_arch}" -name '*.exe' | xargs -rtl1 rm
+    find "$pkgdir/usr/${_arch}" -name '*.a' | xargs -rtl1 ${_arch}-strip -g
+    rm "$pkgdir/usr/${_arch}/bin/wx"{-config,rc-${_pkgver_nomicro}}
+    ln -s "/usr/${_arch}/lib/wx/config/${_arch}-msw-unicode-static-${_pkgver_nomicro}" "$pkgdir/usr/${_arch}/bin/wx-config"
+    rm -r "$pkgdir/usr/${_arch}/share"
+  done
+}
+
